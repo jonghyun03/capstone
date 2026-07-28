@@ -55,7 +55,6 @@ int main(int argc, char *argv[])
   for (i = 0; i < EPOLL_SIZE; i++)
     getcwd(pwd[i], sizeof(pwd[i]));
 
-
   // 서버 소켓 설정
   serv_sock = socket(PF_INET, SOCK_STREAM, 0);
   memset(&serv_adr, 0, sizeof(serv_adr));
@@ -122,16 +121,22 @@ int main(int argc, char *argv[])
             memset(buf, 0, sizeof(buf));
             sprintf(buf, "%s\n", pwd[ep_events[i].data.fd]);
             len = strlen(buf);
-            len = htons(len);
+            len = htonl(len);
             write(ep_events[i].data.fd, (int *)&len, sizeof(len));
             write(ep_events[i].data.fd, buf, strlen(buf));
             memset(buf, 0, sizeof(buf));
           }
           else
           {
+            printf("111\n");
             memset(tmp, 0, sizeof(tmp));
             sprintf(tmp, "cd: no such file or directory: %s\n%s\n", ptr, pwd[ep_events[i].data.fd]);
-            write(ep_events[i].data.fd, buf, strlen(buf));
+            len = strlen(tmp);
+            len = htonl(len);
+            printf("222\n");
+            write(ep_events[i].data.fd, (int *)&len, sizeof(len));
+            printf("333\n");
+            write(ep_events[i].data.fd, tmp, strlen(tmp));
             memset(tmp, 0, sizeof(tmp));
             memset(buf, 0, sizeof(buf));
           }
@@ -180,7 +185,7 @@ int main(int argc, char *argv[])
           strcat(buf, "\n");
           closedir(mydir);
           len = strlen(buf);
-          len = htons(len);
+          len = htonl(len);
           write(ep_events[i].data.fd, (int *)&len, sizeof(len));
           write(ep_events[i].data.fd, buf, strlen(buf));
           memset(buf, 0, sizeof(buf));
@@ -193,20 +198,24 @@ int main(int argc, char *argv[])
           if (fp == NULL)
           {
             memset(buf, 0, sizeof(buf));
+            invalid = htonl(invalid);
+            // -1 보내기
             write(ep_events[i].data.fd, (int *)&invalid, sizeof(invalid));
             strcpy(buf, pwd[ep_events[i].data.fd]);
             strcat(buf, "\n");
             len = strlen(buf);
-            len = htons(len);
+            len = htonl(len);
             write(ep_events[i].data.fd, (int *)&len, sizeof(len));
             write(ep_events[i].data.fd, buf, strlen(buf));
             memset(buf, 0, sizeof(buf));
+            printf("---failed sent.\n\n");
           }
           else
           {
             // 파일 잘 찾음
             stat(buf, &mystat);
             len = (int)mystat.st_size;
+            len = htonl(len);
             write(ep_events[i].data.fd, (int *)&len, sizeof(len));
             while (1)
             {

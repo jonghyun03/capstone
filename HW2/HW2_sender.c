@@ -8,18 +8,20 @@
 #include <sys/stat.h>
 #include <time.h>
 
-#define BUF_SIZE 30
+#define BUF_SIZE 1024
 void error_handling(char *message);
 
 typedef struct
 {
 	long time;
 	int seq;
+	int size;
 	char message[BUF_SIZE];
 } pkt_s;
 
 int main(int argc, char *argv[])
 {
+	int tmplen = 0;
 	char file_name[30];
 	int serv_sock;
 	int str_len;
@@ -37,7 +39,7 @@ int main(int argc, char *argv[])
 	int seq_flag = 0;
 
 	struct sockaddr_in serv_adr, clnt_adr;
-	struct timeval optVal = {6, 0};
+	struct timeval optVal = {3, 0};
 	int optLen = sizeof(optVal);
 
 	if (argc != 3)
@@ -58,6 +60,9 @@ int main(int argc, char *argv[])
 
 	pkt->seq = 0;
 	ack->seq = -1;
+
+	pkt->size = 0;
+	ack->size = 0;
 
 	fputs("Enter the file do you want to send: ", stdout);
 	fgets(file_name, sizeof(file_name), stdin);
@@ -100,6 +105,8 @@ int main(int argc, char *argv[])
 			// 파일 읽기
 			memset(pkt->message, 0, BUF_SIZE);
 			read_cnt = fread((void *)pkt->message, 1, BUF_SIZE, fp);
+			pkt->size = htonl(read_cnt);
+			printf("read cnt ===> %d\n", read_cnt);
 		}
 
 		clnt_adr_sz = sizeof(clnt_adr);
@@ -120,7 +127,7 @@ int main(int argc, char *argv[])
 			sendto(serv_sock, pkt, sizeof(pkt_s), 0, (struct sockaddr *)&serv_adr, sizeof(serv_adr));
 
 			// 읽기
-			str_len = recvfrom(serv_sock, ack, sizeof(pkt_s) + 1024, 0, (struct sockaddr *)&clnt_adr, &clnt_adr_sz);
+			str_len = recvfrom(serv_sock, ack, sizeof(pkt_s), 0, (struct sockaddr *)&clnt_adr, &clnt_adr_sz);
 			// Seq 비교
 			pkt->seq = ntohs(pkt->seq);
 			ack->seq = ntohs(ack->seq);
@@ -142,6 +149,9 @@ int main(int argc, char *argv[])
 			printf("-------connection lost!--------\n");
 			break;
 		}
+		printf("#%d seq sent!\n", ack->seq);
+		tmplen += strlen(pkt->message);
+		printf("total len => %d\n", tmplen);
 		// printf("ACK received!\n");
 		if (read_cnt < BUF_SIZE)
 		{

@@ -6,13 +6,14 @@
 #include <sys/socket.h>
 #include <time.h>
 
-#define BUF_SIZE 30
+#define BUF_SIZE 1024
 void error_handling(char *message);
 
 typedef struct 
 {
 	long time;
 	int seq;
+	int size;
 	char message[BUF_SIZE];
 } pkt_c;
 
@@ -79,13 +80,18 @@ int main(int argc, char *argv[])
 		}
 		else
 		{
-			total_size += strlen(pkt->message);
-			fwrite((void*)pkt->message, 1, strlen(pkt->message), fp);
+			total_size += sizeof(pkt->message);
+			printf("seq=> %d\n", ntohs(pkt->seq));
+			printf("len=> %d\n", total_size);
+			pkt->size = ntohl(pkt->size);
+			fwrite((void*)pkt->message, 1, pkt->size, fp);
 		}
 		total_len += str_len;
 
 		ack->seq = ntohs(pkt->seq);
 		pkt->time = ntohl(pkt->time);
+
+		ack->size = 0;
 		
 		ack->seq = htons(ack->seq);
 		strcpy(ack->message, "Thank you!");

@@ -5,6 +5,10 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 
+#define COLOR_ORANGE "\033[38;2;255;140;0m"
+#define COLOOR_CYAN "\033[38;2;0;255;255m"
+#define COLOR_RESET "\033[0m"
+
 #define BUF_SIZE 1024
 void error_handling(char *message);
 
@@ -50,7 +54,7 @@ int main(int argc, char *argv[])
     if (strcmp(buf, "exit") == 0)
     {
       close(sd);
-      printf("Good bye...\n");
+      printf("%sGood bye...%s\n", COLOOR_CYAN, COLOR_RESET);
       return 0;
     }
     else if (strncmp(buf, "cd ", 3) == 0)
@@ -58,7 +62,7 @@ int main(int argc, char *argv[])
       write(sd, buf, strlen(buf));
       memset(buf, 0, sizeof(buf));
       read(sd, (int *)&len, sizeof(len));
-      len = ntohs(len);
+      len = ntohl(len);
       size_cnt = 0;
       memset(file_list, 0, sizeof(file_list));
       while (size_cnt < len)
@@ -76,7 +80,7 @@ int main(int argc, char *argv[])
       write(sd, buf, strlen(buf));
       memset(buf, 0, sizeof(buf));
       read(sd, (int *)&len, sizeof(len));
-      len = ntohs(len);
+      len = ntohl(len);
       size_cnt = 0;
       memset(file_list, 0, sizeof(file_list));
       memset(file_name, 0, sizeof(file_name));
@@ -96,17 +100,17 @@ int main(int argc, char *argv[])
     { // file download
       write(sd, buf, strlen(buf));
       read(sd, (int *)&len, sizeof(len));
+      len = ntohl(len);
       if (len == -1)
       {
         memset(buf, 0, sizeof(buf));
         // Wrong Command
-        printf("Wrong command... no such file or command.\n");
+        printf("%sWrong command... no such file or command.%s\n", COLOR_ORANGE, COLOR_RESET);
         read(sd, (int *)&len, sizeof(len));
-        len = ntohs(len);
+        len = ntohl(len);
         size_cnt = 0;
         memset(file_list, 0, sizeof(file_list));
         memset(file_name, 0, sizeof(file_name));
-        printf("HERE???????????.\n");
         while (size_cnt < len)
         {
           read_cnt = read(sd, file_name, BUF_SIZE);
@@ -117,6 +121,7 @@ int main(int argc, char *argv[])
         }
         // PWD 출력
         printf("%s", file_list);
+        continue;
       }
 
       // 파일 찾음
@@ -127,10 +132,18 @@ int main(int argc, char *argv[])
       memset(buf, 0, sizeof(buf));
       while (size_cnt < len)
       {
-        read_cnt = read(sd, buf, len-size_cnt);
+        if ((len - size_cnt) > BUF_SIZE)
+        {
+          read_cnt = read(sd, buf, BUF_SIZE);
+        }
+        else
+        { // 마지막 읽을 때
+          read_cnt = read(sd, buf, len - size_cnt);
+        }
         if (read_cnt == -1)
           error_handling("read() error...");
         size_cnt += read_cnt;
+        // printf("%d-----%d-----\n", len, size_cnt);
         fwrite((void *)buf, 1, read_cnt, fp);
       }
       fclose(fp);
